@@ -18,6 +18,8 @@ jobs:
       - run: npx cap add android
       - name: Kunci portrait
         run: sed -i 's|<activity|<activity android:screenOrientation="portrait"|' android/app/src/main/AndroidManifest.xml
+      - name: Pasang icon
+        run: rm -rf android/app/src/main/res/mipmap-anydpi-v26 && cp -r icons/. android/app/src/main/res/
       - run: npx cap sync android
       - run: cd android && chmod +x gradlew && ./gradlew assembleDebug
       - uses: actions/upload-artifact@v4
