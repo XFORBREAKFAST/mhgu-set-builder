@@ -101,6 +101,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .it div{flex:1}.it b{font-size:14px}.it em{font-style:normal;font-size:11px;color:var(--l);margin-left:6px;font-weight:700}.it p{color:var(--m);font-size:12px;margin-top:2px}
 .toast{position:fixed;left:50%;bottom:160px;transform:translateX(-50%);background:var(--t);color:var(--bg);padding:10px 16px;border-radius:14px;font-weight:700;font-size:13px;z-index:10;opacity:0;transition:opacity .2s;pointer-events:none}.toast.on{opacity:1}
 .spin{width:34px;height:34px;border-radius:50%;border:3px solid var(--c3);border-top-color:var(--l);animation:sp .8s linear infinite;margin:0 auto 10px}@keyframes sp{to{transform:rotate(360deg)}}
+.slots i.f{background:none;border:1.5px solid currentColor}.pt p.dl{display:flex;align-items:center;gap:5px;color:var(--l);font-size:12px;font-weight:600;margin-top:3px;white-space:normal}.pt p.dl svg.i{width:12px;height:12px;flex:none}.pt small em.tu{font-style:normal;color:var(--l);font-weight:700}
 </style></head><body>
 <main id="app"></main>
 <div class="cta" id="cta"></div>
@@ -149,6 +150,7 @@ const SK=DB.sk.map((s,i)=>({i,a:s[0],p:s[1],n:s[2],d:s[3]})).filter(s=>s.p>0&&!h
 const ABL=DB.ab.map((n,i)=>[n,i]).filter(x=>x[0]&&x[1]!=DB.torso).sort((a,b)=>a[0].localeCompare(b[0]));
 const ABS={};DB.sk.forEach(s=>(ABS[s[0]]=ABS[s[0]]||[]).push(s));
 const dots=(n,max=n)=>`<span class=slots>${Array.from({length:max},(_,i)=>`<i class="${i<n?'':'e'}"></i>`).join('')}</span>`;
+const sdots=(t,u)=>`<span class=slots>${[0,1,2].map(i=>`<i class="${i<u?'':i<t?'f':'e'}"></i>`).join('')}</span>`;
 const sgn=p=>(p>0?'+':'')+p;
 const cs=c=>`${DB.ab[c.a1]} ${sgn(c.p1)}${c.a2>=0?` · ${DB.ab[c.a2]} ${sgn(c.p2)}`:''}`;
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('on'),1600)}
@@ -220,22 +222,23 @@ function solve(nm=S.need,lim=300,tmax=7000){
   if(++fn>4000)return false;
   let j=-1,m=0;df.forEach((x,i)=>{if(x>m){m=x;j=i}});if(j<0)return true;
   const u=caps.reduce((a,b)=>a+b,0);
-  for(let i=0;i<n;i++)if(df[i]>0&&df[i]>u*rate[i])return false;
+  let ns=0;for(let i=0;i<n;i++)if(df[i]>0){if(!rate[i])return false;ns+=df[i]/rate[i]}if(ns>u+1e-9)return false;
   for(const d of byAb[j]){const tr={};
    for(let b=0;b<caps.length;b++){const c=caps[b];if(c<d.z||tr[c])continue;tr[c]=1;
-    caps[b]-=d.z;o.push(d.i);
+    caps[b]-=d.z;o.push([d.i,b]);
     if(fill(df.map((x,i)=>x-d.v[i]),caps,o))return true;
     o.pop();caps[b]+=d.z}}
   return false}
  function ok(k,o,bv,sl,ch){
+  let ns=0;const av=sl+(ss[k]||0)+ch.s;
   for(let j=0;j<n;j++){let p=o[j]+ch.v[j]+(suf[k]?suf[k][j]:0);if(k>1)p+=bv[j]*M;
-   if(p+(sl+ss[k]+ch.s)*rate[j]<need[j])return false}return true}
+   const df=need[j]-p;if(df>0){if(!rate[j])return false;ns+=df/rate[j];if(ns>av+1e-9)return false}}return true}
  function dfs(k,o,bv,sl,ts,ch){
   if(cut)return;
   if(++nodes%2000==0&&Date.now()-t0>tmax){cut=true;return}
   if(k==5){
-   const m=1+ts,df=need.map((x,j)=>x-o[j]-ch.v[j]-bv[j]*m),caps=[ch.s,S.ws].concat(pk.map((c,i)=>C[i][c].s)).filter(x=>x>0),ds=[];fn=0;
-   if(df.every(x=>x<=0)||fill(df,caps,ds)){out.push({p:pk.map((c,i)=>C[i][c].i),c:ch.i,d:ds,def:pk.reduce((a,c,i)=>a+C[i][c].d,0)});if(out.length>=lim)cut=true}
+   const m=1+ts,df=need.map((x,j)=>x-o[j]-ch.v[j]-bv[j]*m),H=[['c',ch.s],['w',S.ws]].concat(pk.map((c,i)=>[i,C[i][c].s])).filter(h=>h[1]>0),caps=H.map(h=>h[1]),ds=[];fn=0;
+   if(df.every(x=>x<=0)||fill(df,caps,ds)){out.push({p:pk.map((c,i)=>C[i][c].i),c:ch.i,d:ds.map(x=>[x[0],H[x[1]][0]]),def:pk.reduce((a,c,i)=>a+C[i][c].d,0)});if(out.length>=lim)cut=true}
    return}
   if(!ok(k,o,bv,sl,ch))return;
   C[k].forEach((c,x)=>{pk[k]=x;
@@ -245,17 +248,19 @@ function solve(nm=S.need,lim=300,tmax=7000){
 function calc(s){
  if(s.k)return s.k;
  const tot={},add=(ab,m=1)=>ab.forEach(([a,p])=>tot[a]=(tot[a]||0)+p*m),P=s.p.map((i,k)=>DB.ar[SL[k]][i]),mult=1+P.reduce((a,x)=>a+x[8],0);
- P.forEach((x,k)=>add(x[7],k==1?mult:1));if(s.c>=0)add(cab(S.charms[s.c]));s.d.forEach(i=>add(DB.dec[i][2]));
- const dc={};s.d.forEach(i=>dc[DB.dec[i][0]]=(dc[DB.dec[i][0]]||0)+1);
+ P.forEach((x,k)=>add(x[7],k==1?mult:1));if(s.c>=0)add(cab(S.charms[s.c]));s.d.forEach(([i,h])=>add(DB.dec[i][2],h===1?mult:1));
+ const dc={};s.d.forEach(([i,h])=>(dc[h]=dc[h]||[]).push(i));
  const act=Object.keys(tot).map(a=>{const T=tot[a];let b=null;
   (ABS[a]||[]).forEach(k=>{if(T>0&&k[1]>0&&k[1]<=T&&(!b||k[1]>b[1]))b=k;if(T<0&&k[1]<0&&T<=k[1]&&(!b||k[1]<b[1]))b=k});return b}).filter(x=>x&&!hid.has(x[2]));
- return s.k={P,dc,act,rs:[0,1,2,3,4].map(r=>P.reduce((a,x)=>a+x[6][r],0))}}
+ return s.k={P,dc,mult,act,rs:[0,1,2,3,4].map(r=>P.reduce((a,x)=>a+x[6][r],0))}}
 function card(s,n){
- const{P,dc,act,rs}=calc(s),want=new Set(Object.keys(S.need).map(a=>DB.sk[S.need[a]][2]).concat(SEL));
+ const{P,dc,act,rs,mult}=calc(s),want=new Set(Object.keys(S.need).map(a=>DB.sk[S.need[a]][2]).concat(SEL));
  act.sort((a,b)=>(want.has(b[2])-want.has(a[2]))||(b[1]>0)-(a[1]>0));
+ const row=(key,icn,lab,name,tot,ex='')=>{const L=dc[key]||[],u=L.reduce((t,i)=>t+DB.dec[i][1],0);
+  return`<div class=pt><span class=ic>${ic(icn)}</span><div><small>${lab}${ex}</small><b>${name}</b>${L.length?`<p class=dl>${ic('gem')}${L.map(i=>DB.dec[i][0]).join(' · ')}</p>`:''}</div>${tot?sdots(tot,u):''}</div>`};
+ const ch=s.c>=0?S.charms[s.c]:null;
  return`<article class="sol ${n==1?'best':''}"><div class=sh><span class=rk>${n}</span><div class=def><b>${ic('shield')}${s.def}</b><small>Defense maks</small></div><div class=res>${EL.map((e,i)=>`<span title="${e[1]}"><i style="background:var(--${e[0]})"></i>${rs[i]}</span>`).join('')}</div></div>
-<div class=parts>${P.map((x,k)=>`<div class=pt><span class=ic>${ic(SL[k])}</span><div><small>${SN[k]}</small><b>${x[0]}</b></div>${x[4]?dots(x[4],3):''}</div>`).join('')}${S.ws?`<div class=pt><span class=ic>${ic(S.type==1?'sword':'gun')}</span><div><small>Senjata</small><b>Slot senjata</b></div>${dots(S.ws,3)}</div>`:''}${s.c>=0?`<div class=pt><span class=ic>${ic('charm')}</span><div><small>Talisman</small><b>${cs(S.charms[s.c])}</b></div>${S.charms[s.c].s?dots(S.charms[s.c].s,3):''}</div>`:''}</div>
-${s.d.length?`<div class=sec><h4>${ic('gem')}Decoration</h4><div class=gems>${Object.keys(dc).map(k=>`<span>${k}<em>×${dc[k]}</em></span>`).join('')}</div></div>`:''}
+<div class=parts>${S.ws?row('w',S.type==1?'sword':'gun','Senjata','Slot senjata',S.ws):''}${P.map((x,k)=>row(k,SL[k],SN[k],x[0],x[4],k==1&&mult>1?` · <em class=tu>skill ×${mult}</em>`:x[8]?' · <em class=tu>Torso Up</em>':'')).join('')}${ch?row('c','charm','Talisman',cs(ch),ch.s):''}</div>
 <div class=sec><h4>${ic('skill')}Skill aktif</h4><div class=sk>${act.map(k=>`<span class="${k[1]<0?'neg':want.has(k[2])?'ex':''}">${k[2]}</span>`).join('')}</div></div></article>`}
 let SCAN=0,POT=[],PI=0,PN=1,DONE=0,SHOWALL=0;
 const LOW=()=>{const m={},bad=S.type==1?3:2;SK.forEach(s=>{if((DB.tg[s.a]||[]).includes(bad))return;if(!m[s.a]||s.p<m[s.a].p)m[s.a]=s});return Object.values(m)};
