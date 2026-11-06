@@ -117,6 +117,8 @@ button:active,.it:active,.mode:active{transform:scale(.94)}
 #app.enter>*:nth-child(2){animation-delay:.05s}#app.enter>*:nth-child(3){animation-delay:.1s}#app.enter>*:nth-child(4){animation-delay:.15s}
 #app.enter>*:nth-child(5){animation-delay:.2s}#app.enter>*:nth-child(6){animation-delay:.25s}#app.enter>*:nth-child(n+7){animation-delay:.3s}
 #app.leave{animation:fadeout .16s ease forwards}
+@keyframes inL{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:none}}@keyframes inR{from{opacity:0;transform:translateX(-40px)}to{opacity:1;transform:none}}@keyframes outL{to{opacity:0;transform:translateX(-40px)}}@keyframes outR{to{opacity:0;transform:translateX(40px)}}
+#app.in-l{animation:inL .3s cubic-bezier(.2,.8,.2,1)}#app.in-r{animation:inR .3s cubic-bezier(.2,.8,.2,1)}#app.out-l{animation:outL .13s ease-in forwards}#app.out-r{animation:outR .13s ease-in forwards}
 .cta.enter button{animation:popin .5s var(--sp) .25s both}
 .opt.on .rd svg,.ms button.on .bx svg,.it.on .ic svg{animation:bounce .35s var(--sp)}
 .sol.in{animation:rise .45s var(--sp) both}
@@ -222,8 +224,7 @@ function sfx(t){if(G.mute)return;try{AC=AC||new (window.AudioContext||window.web
  const now=AC.currentTime,P={tap:[[880,1320,.045,.07]],pop:[[520,980,.07,.09]],up:[[660,0,.06,.08],[990,0,.09,.08,.07]],down:[[620,0,.06,.07],[420,0,.1,.07,.06]],chime:[[784,0,.18,.08],[1175,0,.28,.07,.11]],whoosh:[[300,900,.22,.06]],open:[[440,660,.12,.06]]}[t]||[];
  P.forEach(([f,f2,d,v,dl=0])=>{const o=AC.createOscillator(),g=AC.createGain();o.type='sine';o.frequency.setValueAtTime(f,now+dl);if(f2)o.frequency.exponentialRampToValueAtTime(f2,now+dl+d);
   g.gain.setValueAtTime(0,now+dl);g.gain.linearRampToValueAtTime(v,now+dl+.008);g.gain.exponentialRampToValueAtTime(.0001,now+dl+d);o.connect(g).connect(AC.destination);o.start(now+dl);o.stop(now+dl+d+.02)})}catch(e){}}
-function haptic(){try{const H=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.Haptics;if(H)H.impact({style:'LIGHT'});else if(navigator.vibrate)navigator.vibrate(8)}catch(e){}}
-document.addEventListener('pointerdown',e=>{const b=e.target.closest('button,.it,.mode');if(b&&!b.disabled){sfx(b.dataset.s||'tap');haptic()}},{passive:true});
+document.addEventListener('click',e=>{const b=e.target.closest('button,.it,.mode');if(b&&!b.disabled)sfx(b.dataset.s||'tap')},true);
 function toggleMute(){G.mute^=1;saveG();if(!G.mute)sfx('pop');MODE?view():vPick();toast(G.mute?'Suara mati':'Suara nyala')}
 /* ---- dialog ---- */
 function openDlg(icon,title,text,yes,fn){$('#dli').innerHTML=ic(icon);$('#dlt').textContent=title;$('#dlp').textContent=text;const y=$('#dly');y.textContent=yes;y.onclick=()=>{closeDlg();fn()};$('#dlg').classList.add('open');sfx('open')}
@@ -231,7 +232,9 @@ function closeDlg(){$('#dlg').classList.remove('open')}
 function exitApp(){const A=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.App;if(A&&A.exitApp)A.exitApp();else toast('Tutup tab browser untuk keluar')}
 function askExit(){openDlg('exit','Keluar dari MHG4U?','Pilihan skill dan talismanmu tetap tersimpan.','Keluar',exitApp)}
 /* ---- navigation ---- */
-function trans(fn){const ap=$('#app');ap.classList.remove('enter');ap.classList.add('leave');setTimeout(()=>{ap.classList.remove('leave');fn();scrollTo(0,0);void ap.offsetWidth;ap.classList.add('enter');const c=$('#cta');c.classList.remove('enter');void c.offsetWidth;c.classList.add('enter')},160)}
+function anim(el,cls,ms){el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls);clearTimeout(el['_'+cls]);el['_'+cls]=setTimeout(()=>el.classList.remove(cls),ms)}
+function trans(fn){const ap=$('#app');ap.className='leave';setTimeout(()=>{ap.className='';fn();scrollTo(0,0);anim(ap,'enter',900);anim($('#cta'),'enter',900)},160)}
+function slide(dir,fn){const ap=$('#app');ap.className='out-'+dir;setTimeout(()=>{ap.className='';fn();scrollTo(0,0);anim(ap,'in-'+dir,400)},130)}
 function pickMode(m){sfx('whoosh');trans(()=>{initMode(m);document.body.classList.remove('picking');view()})}
 function toPicker(){SCAN++;trans(()=>{MODE=null;setTheme(null);vPick()})}
 function vPick(){
@@ -255,7 +258,7 @@ const sgn=p=>(p>0?'+':'')+p;
 const cs=c=>`${DB.ab[c.a1]} ${sgn(c.p1)}${c.a2>=0?` · ${DB.ab[c.a2]} ${sgn(c.p2)}`:''}`;
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('on'),1600)}
 function st(k,v){S[k]=v;LAST=null;save();view()}
-function go(t){if(t==tab)return;tab=t;if(t=='b')page=LAST&&page=='res'?'res':'form';trans(view)}
+function go(t){if(t==tab)return;tab=t;if(t=='b')page=LAST&&page=='res'?'res':'form';slide(t=='c'?'l':'r',view)}
 function view(){
  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t==tab));
  if(tab=='c')return vCharm();
@@ -362,7 +365,7 @@ function card(s,n){
  return`<article class="sol ${n==1?'best':''}"><div class=sh><span class=rk>${n}</span><div class=def><b>${ic('shield')}${s.def}</b><small>Defense maks</small></div><div class=res>${EL.map((e,i)=>`<span title="${e[1]}"><i style="background:var(--${e[0]})"></i>${rs[i]}</span>`).join('')}</div></div>
 <div class=parts>${S.ws?row('w',S.type==1?'sword':'gun','Senjata','Slot senjata',S.ws):''}${P.map((x,k)=>row(k,SL[k],SN[k],x[0],x[4],k==1&&mult>1?` · <em class=tu>skill ×${mult}</em>`:x[8]?' · <em class=tu>Torso Up</em>':'')).join('')}${ch?row('c','charm','Talisman',cs(ch),ch.s):''}</div>
 <div class=sec><h4>${ic('skill')}Skill aktif</h4><div class=sk>${act.map(k=>`<span class="${k[1]<0?'neg':want.has(k[2])?'ex':''}">${k[2]}</span>`).join('')}</div></div></article>`}
-var SCAN=0;let POT=[],PI=0,PN=1,DONE=0,SHOWALL=0;
+var SCAN=0;let RA=0,POT=[],PI=0,PN=1,DONE=0,SHOWALL=0;
 const LOW=()=>{const m={},bad=S.type==1?3:2;SK.forEach(s=>{if((DB.tg[s.a]||[]).includes(bad))return;if(!m[s.a]||s.p<m[s.a].p)m[s.a]=s});return Object.values(m)};
 const NM=()=>{const m=Object.assign({},S.need);SEL.forEach(n=>{const s=SK.find(k=>k.n==n);if(s)m[s.a]=s.i});return m};
 function vRes(){
@@ -374,8 +377,9 @@ function paint(){
  const r=LAST,e=$('#res');if(!r||!e)return;
  if(r.busy){e.innerHTML=`<div class=note><div class=spin></div>Mencari set terbaik…</div>`;$('#stats').innerHTML='';return}
  r.all.forEach(calc);
+ setTimeout(()=>RA=0,0);
  $('#stats').innerHTML=`<div class=stats><div class="stat hl"><b>${r.all.length}${r.cut?'+':''}</b><small>set ditemukan</small></div><div class=stat><b>${r.all[0]?r.all[0].def:'–'}</b><small>DEF tertinggi</small></div><div class=stat><b>${SEL.length}</b><small>skill bonus</small></div></div>`;
- e.innerHTML=r.all.length?r.all.slice(0,40).map((s,i)=>card(s,i+1).replace('<article class="sol','<article style="animation-delay:'+Math.min(i,8)*.06+'s" class="in sol')).join('')+(r.all.length>40?`<p class=note>Menampilkan 40 set dengan DEF tertinggi.</p>`:''):`<p class=note>Tidak ada set yang memenuhi${r.cut?' dalam batas waktu':''}.<br>Coba kurangi skill, ganti rank, atau pakai talisman.</p>`}
+ e.innerHTML=r.all.length?r.all.slice(0,40).map((s,i)=>(RA?card(s,i+1).replace('<article class="sol','<article style="animation-delay:'+Math.min(i,8)*.06+'s" class="in sol'):card(s,i+1))).join('')+(r.all.length>40?`<p class=note>Menampilkan 40 set dengan DEF tertinggi.</p>`:''):`<p class=note>Tidak ada set yang memenuhi${r.cut?' dalam batas waktu':''}.<br>Coba kurangi skill, ganti rank, atau pakai talisman.</p>`}
 function drawPot(){
  const e=$('#pot');if(!e)return;
  const list=SHOWALL?POT:POT.slice(0,14),sel=SEL.filter(n=>!list.includes(n));
@@ -394,6 +398,6 @@ function tg(n){const x=SEL.indexOf(n);x<0?SEL.push(n):SEL.splice(x,1);SHOWALL=0;
 function run(){
  if(!Object.keys(S.need).length)return;
  SCAN++;SEL=[];SHOWALL=0;POT=[];DONE=0;page='res';LAST={busy:1,all:[]};trans(view);
- setTimeout(()=>{LAST=solve();paint();sfx(LAST.all.length?'chime':'down');scan()},260)}
-vPick();document.getElementById('app').classList.add('enter');
+ setTimeout(()=>{LAST=solve();RA=1;paint();sfx(LAST.all.length?'chime':'down');scan()},260)}
+vPick();anim(document.getElementById('app'),'enter',900);
 </script></body></html>
